@@ -1,9 +1,14 @@
-var assetStage1, assetStage2, assetStage3, final;
-var stage1, stage2, stage3, state;
+var assetStage1, assetStage2, assetStage3, final, se;
+var welcome, stage1, stage2, stage3, thanks, state;
 const SCALE_WIDTH = 4, SCALE_HEIGHT = 3; // set canvas radius to 4:3, could be change for different size
 const NOTE_LENGTH = 100; // in ms
 
 function preload() {
+  se = {
+    clap  : loadSound("assets/se/Clap.ogg"),
+    rim   : loadSound("assets/se/Rim.ogg"),
+    snare : loadSound("assets/se/Snare.ogg"),
+  }
   assetStage1 = {
     bg      : null,
     case    : null,
@@ -11,39 +16,39 @@ function preload() {
     chara   : null,
     charaG  : null,
     charaF  : null,
-    arm     : loadImage("./assets/pusher.png"),
-    pod2   : loadImage("./assets/pod-2.png"),
-    pod2e1 : loadImage("./assets/pod-2-semi.png"),
-    pod2ept: loadImage("./assets/pod-2-ept.png"),
-    pod4   : loadImage("./assets/pod-4.png"),
-    pod4e1 : loadImage("./assets/pod-4-semi1.png"),
-    pod4e2 : loadImage("./assets/pod-4-semi2.png"),
-    pod4e3 : loadImage("./assets/pod-4-semi3.png"),
-    pod4ept: loadImage("./assets/pod-4-ept.png"),
+    arm     : loadImage("assets/pusher.png"),
+    pod2   : loadImage("assets/pod-2.png"),
+    pod2e1 : loadImage("assets/pod-2-semi.png"),
+    pod2ept: loadImage("assets/pod-2-ept.png"),
+    pod4   : loadImage("assets/pod-4.png"),
+    pod4e1 : loadImage("assets/pod-4-semi1.png"),
+    pod4e2 : loadImage("assets/pod-4-semi2.png"),
+    pod4e3 : loadImage("assets/pod-4-semi3.png"),
+    pod4ept: loadImage("assets/pod-4-ept.png"),
   };
   assetStage2 = {
     bg: null,
     beanGood: [
-      loadImage("./assets/bean-good-done.png"),
-      loadImage("./assets/bean-good-drop.png"),
+      loadImage("assets/bean-good-done.png"),
+      loadImage("assets/bean-good-drop.png"),
 
-      loadImage("./assets/bean-good-a.png"),
-      loadImage("./assets/bean-good-b.png"),
-      loadImage("./assets/bean-good-c.png"),
-      loadImage("./assets/bean-good-d.png")
+      loadImage("assets/bean-good-a.png"),
+      loadImage("assets/bean-good-b.png"),
+      loadImage("assets/bean-good-c.png"),
+      loadImage("assets/bean-good-d.png")
     ],
     beanBad: [
-      loadImage("./assets/bean-bad-done.png"),
-      loadImage("./assets/bean-bad-drop.png"),
+      loadImage("assets/bean-bad-done.png"),
+      loadImage("assets/bean-bad-drop.png"),
 
-      loadImage("./assets/bean-bad-a.png"),
-      loadImage("./assets/bean-bad-b.png"),
-      loadImage("./assets/bean-bad-c.png"),
-      loadImage("./assets/bean-bad-d.png")
+      loadImage("assets/bean-bad-a.png"),
+      loadImage("assets/bean-bad-b.png"),
+      loadImage("assets/bean-bad-c.png"),
+      loadImage("assets/bean-bad-d.png")
     ],
   }
   final = {
-    welcome: loadImage("./assets/welcome.png"),
+    welcome: loadImage("assets/welcome.png"),
     end : null,
   }
 }
@@ -57,6 +62,7 @@ function setup() {
   },
 
   initStages();
+  state.currentStage = welcome;
 
   let [w, h] = getScaledCanvasSize();
   createCanvas(w, h);
@@ -72,6 +78,12 @@ function windowResized() {
 }
 
 function initStages() {
+  // welcome screen
+  welcome = {
+    show: () => {
+      image(final.welcome, 0, 0, width, height);
+    },
+  }
   // stage 1 
   stage1 = {
     asset: assetStage1,
@@ -90,7 +102,10 @@ function initStages() {
       "d": [0,0,1],
       "f": [0,0,0,0,1],
       "p": [-1],
-    }
+    },
+    show: () => {
+      stage1.elements.render();
+    },
   };
 
   // bg
@@ -120,6 +135,9 @@ function initStages() {
 
 }
 
+/**
+ * get maximun SCALE_WIDTH : SCALE_HEIGHT size for canvas
+ */
 function getScaledCanvasSize() {
   let h = windowWidth * SCALE_HEIGHT / SCALE_WIDTH;
   return h < windowHeight ? [windowWidth, h] : [windowHeight * SCALE_WIDTH / SCALE_HEIGHT, windowHeight];
@@ -128,7 +146,7 @@ function getScaledCanvasSize() {
 function draw() {
   // add your draw code here
   background("black");
-  stage1.elements.render();
+  state.currentStage.show();
 }
 
 /**
@@ -262,6 +280,14 @@ class CObject {
   }
 }
 
+/**
+ * Note Object for hit detection
+ * @param props: {
+   len: length of the note, default 100ms
+   parent: should be state
+   key: 0/1/-1 correspound to z/x/enter
+ }
+ */
 class Note {
   constructor(props) {
     this.state = {
@@ -277,9 +303,9 @@ class Note {
       this.state.parent.currentNote = null;
       let hit = this.state.hit;
       if (hit) {
-        // play_sound();
+        se.clap.play();
       } else {
-        // play_sound();
+        se.rim.play();
       }
       return hit;
     }
@@ -326,7 +352,7 @@ function keyTyped() {
     console.log("x pressed");
     // x event
     hitNote(1);
-  } else if (key === "Enter") {
+  } else if (key === "/") {
     console.log("enter pressed")
     // enter event
     hitNote(-1);
@@ -335,12 +361,12 @@ function keyTyped() {
 
 function hitNote(k) {
   if (!state) return; // avoid initialize error
-  if (state.currentStage === 0) {
+  if (state.currentStage === welcome) {
     console.log("game start")
-    state.currentStage = 1;
-  } else if (state.currentStage === 4) {
+    state.currentStage = stage1;
+  } else if (state.currentStage === final) {
     console.log("return to welcome")
-    state.currentStage = 0;
+    state.currentStage = welcome;
   }
   let n = state.currentNote;
   if (!n) return; // no note to be played
