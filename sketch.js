@@ -125,6 +125,7 @@ function initStages() {
     rect(0,0,w,h);
     pop()
   };
+
   let container = new CObject({
     name: "container_bowl",
     x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
@@ -207,6 +208,7 @@ class CObject {
       rotation: props.rotation ? props.rotation : 0,
       isHidden: false,
     }
+    this.anims = props.anims;
     this.parent = props.parent;
     this.children = [];
     if (props.draw) {
@@ -341,17 +343,30 @@ class Note {
   }
 }
 
+/**
+ * Animation class using for timed moving/transform animation on CObject
+ * @param props: {
+   len: length of animation in frame
+   obj: the object it apply to
+   move: function (@param state) the moving function prcess and update obj's stats
+ }
+ */
 class Animation {
   constructor(props) {
     this.state = {
       life : props.len,
       obj : props.obj,
     }
+    this.move = props.move
   }
 
   update(dt) {
     life --;
     return life <= 0;
+  }
+
+  move(state) {
+
   }
 
   draw() {
