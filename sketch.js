@@ -14,7 +14,7 @@ function preload() {
     bg      : null,
     bag     : loadImage("assets/bag.png"),
     bean    : loadImage("assets/bean.png"),
-    belt    : [loadImage("assets/belt0.png"), loadImage("assets/belt1.png")],
+    table   : loadImage("assets/table.png"),
     chara   : null,
     charaG  : null,
     charaF  : null,
@@ -61,6 +61,7 @@ function setup() {
     code: 0, // 0: welcome screen, 1: stage1, 2:stage2, 3:stage3, 4: final
     currentStage: null, // stage object
     currentNote: null,
+    pressed: false,
   },
 
   initStages();
@@ -97,9 +98,7 @@ function initStages() {
     Bean: (x, y) => new CObject({
       x: x, y: y, align: "center", draw: () => image(assetStage1.bean, 0, 0, 200, 200),
     }),
-    pod: (x, y) => new CObject({
-      x: x, y: y,
-    }),
+    pod: null,
     seq: [2,2,4,0, 2,2,4,0, 2,4,2,2,4,2,2,2,4,0],
     notes: {
       "d": [0,0,1],
@@ -161,34 +160,28 @@ function initStages() {
 
   {// container pods
     let container = new CObject({
-      name: "container_pod",align: "topRight", frames: assetStage1.belt,
+      name: "container_pod",align: "topRight",
       x: 100, y: 0, w: 62, h: 60,  
-      draw: (w, h, state) => {
+      draw: (w, h) => {
         testDraw(w, h);
-        if (state.playing) {
-          let k = state.playing.update(deltaTime);
-          if (k == -1) {
-            state.playing = null;
-            image(state.frames[0], -vw(20), 0, w + vw(20), h + vh(30));
-            return;
-          }
-          image(state.frames[k % state.frames.length], -vw(20), 0, w + vw(20), h  + vh(30))
-        } else {
-          image(state.frames[0], -vw(20), 0, w + vw(20), h + vh(30));
-        }
-      },
-      anims: {
-        beltLoop: new Animation({
-          len: 600,
-          rate: 4,
-          loop: true,
-          obj: null,
-        }),
+        image(assetStage1.table, 0, -vh(8), w, h + vh(24));
       }
     });
-    container.setState({
-      playing: container.state.anims.beltLoop,
-    })
+
+    let podIn = new Animation({});
+    let podOut = new Animation({});
+    let anims = {
+      pod_in: podIn,
+      pod_out: podOut,
+    }
+    let pod = (k, x, y) => new CObject({
+      x: x, y: y, anims: anims, align: "center",
+      draw: (w, h, state) => {
+        image(assetStage1["pod" + k], 0, 0, w, h);
+      },
+    });
+    stage1.pod = pod;
+
     stage1.elements.addChild(container)
   }// end container pods
 
@@ -450,6 +443,26 @@ function keyTyped() {
     // enter event
     hitNote(-1);
   }
+}
+
+function keyPressed() {
+  if (state.pressed) return;
+  if (keyCode === 90) {
+    state.zPress = true;
+  } else if (keyCode === 88) {
+    state.xPress = true;
+  }
+  state.pressed = true;
+}
+
+function keyReleased() {
+  if (!state.pressed) return;
+  if (state.zPress) {
+    state.zPress = false;
+  } else if (state.xPress) {
+    state.xPress = false;
+  }
+  state.pressed = false;
 }
 
 function hitNote(k) {
