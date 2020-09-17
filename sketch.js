@@ -2,6 +2,7 @@ var assetStage1, assetStage2, assetStage3, final, se;
 var welcome, stage1, stage2, stage3, thanks, state;
 const SCALE_WIDTH = 4, SCALE_HEIGHT = 3; // set canvas radius to 4:3, could be change for different size
 const NOTE_LENGTH = 100; // in ms
+const bpm = 60, beat = 4; // in frame/s
 
 function preload() {
   se = {
@@ -13,6 +14,7 @@ function preload() {
     bg      : null,
     bag     : loadImage("assets/bag.png"),
     bean    : loadImage("assets/bean.png"),
+    belt    : [loadImage("assets/belt0.png"), loadImage("assets/belt1.png")],
     chara   : null,
     charaG  : null,
     charaF  : null,
@@ -66,6 +68,7 @@ function setup() {
 
   let [w, h] = getScaledCanvasSize();
   createCanvas(w, h);
+  frameRate(bpm);
 
   let c = document.getElementsByTagName("body").item(0).style;
   c.setProperty("display", "flex");
@@ -154,13 +157,40 @@ function initStages() {
       container.addChild(bean)
     }
     stage1.elements.addChild(container);
-  }
+  } // end container bowl & beans
 
-  // container pods
-  stage1.elements.addChild(new CObject({
-    name: "container_pod",
-    x: 100, y: 0, w: 62, h: 50, align: "topRight", draw: testDraw,
-  }))
+  {// container pods
+    let container = new CObject({
+      name: "container_pod",align: "topRight", frames: assetStage1.belt,
+      x: 100, y: 0, w: 62, h: 60,  
+      draw: (w, h, state) => {
+        testDraw(w, h);
+        if (state.playing) {
+          let k = state.playing.update(deltaTime);
+          if (k == -1) {
+            state.playing = null;
+            image(state.frames[0], -vw(20), 0, w + vw(20), h + vh(30));
+            return;
+          }
+          image(state.frames[k % state.frames.length], -vw(20), 0, w + vw(20), h  + vh(30))
+        } else {
+          image(state.frames[0], -vw(20), 0, w + vw(20), h + vh(30));
+        }
+      },
+      anims: {
+        beltLoop: new Animation({
+          len: 600,
+          rate: 4,
+          loop: true,
+          obj: null,
+        }),
+      }
+    });
+    container.setState({
+      playing: container.state.anims.beltLoop,
+    })
+    stage1.elements.addChild(container)
+  }// end container pods
 
   // container beans
   stage1.elements.addChild(new CObject({
@@ -200,6 +230,7 @@ function draw() {
  *   parent: @Nullable parent CObject,
  *   draw: @function shape functions
  *   anims: @Nullable animation dictionary
+ *   frames : @Nullable animation frames for frame anims only
  * }
  * 
  * temple:
@@ -223,9 +254,10 @@ class CObject {
       align: props.align ? props.align : "topLeft",
       rotation: props.rotation ? props.rotation : 0,
       isHidden: false,
+      frames: props.frames,
+      anims : props.anims ? props.anims : {},
+      playing : null,
     }
-    this.anims = props.anims ? props.anims : {};
-    this.playing = null;
     this.parent = props.parent;
     this.children = [];
     if (props.draw) {
@@ -243,7 +275,7 @@ class CObject {
     rotate(this.state.rotation);
     scale(this.state.scale);
     try {
-      this.draw(vw(this.state.w), vh(this.state.h));
+      this.draw(vw(this.state.w), vh(this.state.h), this.state);
       this.children.forEach(c => c.render());
     } catch (error) {
       console.log(error);
@@ -365,21 +397,30 @@ class Note {
  * @param props: {
    len: length of animation in frame
    obj: the object it apply to
+   rate: number of key frames
+   loop: is Animation loop
    move: function (@param state) the moving function prcess and update obj's stats
  }
  */
 class Animation {
   constructor(props) {
     this.state = {
-      life : props.len,
-      obj : props.obj,
+      len   : props.len,
+      life  : props.len,
+      rate  : props.rate,
+      obj   : props.obj,
+      loop  : props.loop,
     }
     this.move = props.move
   }
 
   update(dt) {
-    life --;
-    return life <= 0;
+    this.state.life --;
+    let index = (this.state.len - this.state.life) % bpm * this.state.rate / bpm;
+    if (this.state.life <= 0 && !this.state.loop) {
+      return -1;
+    }
+    return ~~index;
   }
 
   move(state) {
