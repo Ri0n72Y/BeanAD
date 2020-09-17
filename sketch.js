@@ -12,7 +12,7 @@ function preload() {
   assetStage1 = {
     bg      : null,
     bag     : loadImage("assets/bag.png"),
-    bean    : null,
+    bean    : loadImage("assets/bean.png"),
     chara   : null,
     charaG  : null,
     charaF  : null,
@@ -100,7 +100,7 @@ function initStages() {
     seq: [2,2,4,0, 2,2,4,0, 2,4,2,2,4,2,2,2,4,0],
     notes: {
       "d": [0,0,1],
-      "f": [0,0,0,0,1],
+      "q": [0,0,0,0,1],
       "p": [-1],
     },
     show: () => {
@@ -126,27 +126,42 @@ function initStages() {
     pop()
   };
 
-  let container = new CObject({
-    name: "container_bowl",
-    x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
-    draw: testDraw,
-  });
-  container.addChild(new CObject({
-    name: "bag",
-    x: 0, y: 0, w: 50, h: 65, align: "bottomLeft", 
-    draw: (w, h) => {
-      image(assetStage1.bag, vw(5), vh(48), w, h);
+  { // container bowl & beans 
+    let container = new CObject({
+      name: "container_bowl",
+      x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
+      draw: testDraw,
+    });
+    container.addChild(new CObject({
+      name: "bag",
+      x: 0, y: 0, w: 50, h: 65, align: "bottomLeft", 
+      draw: (w, h) => {
+        image(assetStage1.bag, vw(5), vh(48), w, h);
+      }
+    }));
+    for (let i = 0; i < 4; i++) {
+      let bean = new CObject({
+        name: "bean-"+i, align: "center",
+        x: 18 + i * 8, y: 16, w: 9, h: 12,
+        draw: (w, h) => {
+          testDraw(w, h);
+          image(assetStage1.bean, 0, 0, w, h);
+        } 
+      });
+      bean.setState({
+        isHidden: true,
+      });
+      container.addChild(bean)
     }
-  }));
-
-  // container bowl & beans
-  stage1.elements.addChild(container);
+    stage1.elements.addChild(container);
+  }
 
   // container pods
   stage1.elements.addChild(new CObject({
     name: "container_pod",
     x: 100, y: 0, w: 62, h: 50, align: "topRight", draw: testDraw,
   }))
+
   // container beans
   stage1.elements.addChild(new CObject({
     name: "container_flybeans",
@@ -184,6 +199,7 @@ function draw() {
  * 
  *   parent: @Nullable parent CObject,
  *   draw: @function shape functions
+ *   anims: @Nullable animation dictionary
  * }
  * 
  * temple:
@@ -208,7 +224,8 @@ class CObject {
       rotation: props.rotation ? props.rotation : 0,
       isHidden: false,
     }
-    this.anims = props.anims;
+    this.anims = props.anims ? props.anims : {};
+    this.playing = null;
     this.parent = props.parent;
     this.children = [];
     if (props.draw) {
@@ -295,7 +312,7 @@ class CObject {
 
   setState(state) {
     for (const key in state) {
-      if (object.hasOwnProperty(key)) {
+      if (state.hasOwnProperty(key)) {
         this.state[key] = state[key];
       }
     }
@@ -396,12 +413,14 @@ function keyTyped() {
 
 function hitNote(k) {
   if (!state) return; // avoid initialize error
-  if (state.currentStage === welcome) {
-    console.log("game start")
-    state.currentStage = stage1;
-  } else if (state.currentStage === final) {
-    console.log("return to welcome")
-    state.currentStage = welcome;
+  if (k === "/") {
+    if (state.currentStage === welcome) {
+      console.log("game start")
+      state.currentStage = stage1;
+    } else if (state.currentStage === final) {
+      console.log("return to welcome")
+      state.currentStage = welcome;
+    }
   }
   let n = state.currentNote;
   if (!n) return; // no note to be played
