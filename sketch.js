@@ -11,20 +11,20 @@ function preload() {
   }
   assetStage1 = {
     bg      : null,
-    case    : null,
+    bag     : loadImage("assets/bag.png"),
     bean    : null,
     chara   : null,
     charaG  : null,
     charaF  : null,
     arm     : loadImage("assets/pusher.png"),
-    pod2   : loadImage("assets/pod-2.png"),
-    pod2e1 : loadImage("assets/pod-2-semi.png"),
-    pod2ept: loadImage("assets/pod-2-ept.png"),
-    pod4   : loadImage("assets/pod-4.png"),
-    pod4e1 : loadImage("assets/pod-4-semi1.png"),
-    pod4e2 : loadImage("assets/pod-4-semi2.png"),
-    pod4e3 : loadImage("assets/pod-4-semi3.png"),
-    pod4ept: loadImage("assets/pod-4-ept.png"),
+    pod2    : loadImage("assets/pod-2.png"),
+    pod2e1  : loadImage("assets/pod-2-semi.png"),
+    pod2ept : loadImage("assets/pod-2-ept.png"),
+    pod4    : loadImage("assets/pod-4.png"),
+    pod4e1  : loadImage("assets/pod-4-semi1.png"),
+    pod4e2  : loadImage("assets/pod-4-semi2.png"),
+    pod4e3  : loadImage("assets/pod-4-semi3.png"),
+    pod4ept : loadImage("assets/pod-4-ept.png"),
   };
   assetStage2 = {
     bg: null,
@@ -62,7 +62,7 @@ function setup() {
   },
 
   initStages();
-  state.currentStage = welcome;
+  state.currentStage = stage1;
 
   let [w, h] = getScaledCanvasSize();
   createCanvas(w, h);
@@ -117,20 +117,40 @@ function initStages() {
       background("lime");
     }
   }));
-  // container bowl & beans
-  stage1.elements.addChild(new CObject({
+  let testDraw = (w, h) => {
+    push()
+    noFill()
+    stroke(0);
+    strokeWeight(1);
+    rect(0,0,w,h);
+    pop()
+  };
+  let container = new CObject({
     name: "container_bowl",
-    x: 0, y: height, w: width * 0.62, h: height * 0.5, align: "bottomLeft",
-  }))
+    x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
+    draw: testDraw,
+  });
+  container.addChild(new CObject({
+    name: "bag",
+    x: 0, y: 0, w: 50, h: 65, align: "bottomLeft", 
+    draw: (w, h) => {
+      image(assetStage1.bag, vw(5), vh(48), w, h);
+    }
+  }));
+
+  // container bowl & beans
+  stage1.elements.addChild(container);
+
   // container pods
   stage1.elements.addChild(new CObject({
     name: "container_pod",
-    x: width, y: 0, w: width * 0.62, h: height * 0.5, align: "topRight",
+    x: 100, y: 0, w: 62, h: 50, align: "topRight", draw: testDraw,
   }))
   // container beans
   stage1.elements.addChild(new CObject({
     name: "container_flybeans",
-    x: width * 0.2, y: height * 0.2, w: width * 0.6, h: height * 0.6,
+    x: 20, y: 20, w: 60, h: 50,
+    draw: testDraw
   }));
 
 }
@@ -183,7 +203,7 @@ class CObject {
       w: props.w ? props.w : 0,
       h: props.h ? props.h : 0,
       scale: props.scale ? scale : 1,
-      align: props.align ? "topLeft" : props.align,
+      align: props.align ? props.align : "topLeft",
       rotation: props.rotation ? props.rotation : 0,
       isHidden: false,
     }
@@ -200,11 +220,11 @@ class CObject {
     }
     push();
     let [x, y] = this.getOffset(this.state.align);
-    translate(this.state.x + x, this.state.y + y);
+    translate(vw(this.state.x - x), vh(this.state.y - y));
     rotate(this.state.rotation);
     scale(this.state.scale);
     try {
-      this.draw(this.state.w, this.state.h);
+      this.draw(vw(this.state.w), vh(this.state.h));
       this.children.forEach(c => c.render());
     } catch (error) {
       console.log(error);
@@ -374,4 +394,12 @@ function hitNote(k) {
     return n.hit();
   }
   return false;
+}
+
+function vw(n) {
+  return width * n * 0.01;
+}
+
+function vh(n) {
+  return height * n * 0.01;
 }
