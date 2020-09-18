@@ -19,10 +19,10 @@ function preload() {
     charaG  : null,
     charaF  : null,
     arm     : loadImage("assets/pusher.png"),
-    pod2    : loadImage("assets/pod-2.png"),
+    pod2e0  : loadImage("assets/pod-2.png"),
     pod2e1  : loadImage("assets/pod-2-semi.png"),
     pod2ept : loadImage("assets/pod-2-ept.png"),
-    pod4    : loadImage("assets/pod-4.png"),
+    pod4e0  : loadImage("assets/pod-4.png"),
     pod4e1  : loadImage("assets/pod-4-semi1.png"),
     pod4e2  : loadImage("assets/pod-4-semi2.png"),
     pod4e3  : loadImage("assets/pod-4-semi3.png"),
@@ -106,6 +106,10 @@ function initStages() {
     show: () => {
       stage1.elements.render();
     },
+    event: {
+      zPress: (e)=> zPressAnimStage1(e.findChildByName("arm")),
+      zRelease: (e)=> zReleaseAnimStage1(e.findChildByName("arm")),
+    }
   };
 
   // bg
@@ -196,7 +200,7 @@ function initStages() {
         loop : false,
         move : (state) => {
           let s = state.obj.state;
-          s.rotation += state.name === "pod4" ? 0.01 : 0.02;
+          s.rotation += 0.06;
         } 
       });
       let anims = {
@@ -205,29 +209,24 @@ function initStages() {
         pod_round: podRound,
       }
 
-      let pod = (k, x, y) => new CObject({
-        x: x, y: y, w: vw(45), h: vh(60), rotation: k === 4 ? -0.6 : -0.4,
-        anims: anims, align: "topRight", name: "pod"+k,
-        draw: (x, y, w, h, state) => {
-          testDraw(x, y, w, h)
-          if (state.playing) {
-            if (state.playing.update() === -1) {
-              state.playing = null;
-              image(assetStage1["pod" + k], x, y, w, h);
-              return;
-            }
-            if (state.playing.move) state.playing.move(state.playing.state);
-            image(assetStage1["pod" + k], x, y, w, h);
-          } else {
-            image(assetStage1["pod" + k], x, y, w, h);
-          }
-        },
-      });
+      let pod = (k, x, y) => {
+        let name = "pod"+k+"e0";
+        let p = new CObject({
+          x: x, y: y, w: vw(45), h: vh(60), rotation: k === 4 ? -0.6 : -0.3,
+          anims: anims, align: "topRight", name: name,
+          draw: (x, y, w, h, state) => {
+            testDraw(x, y, w, h)
+            handleAnimation(state);
+            image(assetStage1[state.name], x, y, w, h);
+          },
+        })
+        p.setState({ total: k, emptyNum: 0 });
+        return p;
+      };
       stage1.pod = pod;
     }
-    //let test = stage1.pod(4, -92, -8);
-    let test = stage1.pod(4, -12, -8);
-    //test.state.playing = test.state.anims.pod_round;
+    let test = stage1.pod(4, -94, -8);
+    test.state.playing = test.state.anims.pod_in;
     container.addChild(test);
 
     let Bean =  (x, y) => new CObject({
@@ -250,7 +249,82 @@ function initStages() {
     });
     //stage1.elements.addChild(container);
   }
+  {
+    let push = new Animation({
+      len  : 6,
+      loop : false,
+      move : (state) => {
+        let s = state.obj.state;
+        s.x -= 2;
+        s.y += 2;
+      } 
+    });
+    let pull = new Animation({
+      len  : 6,
+      loop : false,
+      move : (state) => {
+        let s = state.obj.state;
+        s.x += 2;
+        s.y -= 2;
+      } 
+    });
+    let anims = {
+      push: push,
+      pull: pull,
+    }
+    let arm = new CObject({
+      x: 110, y: -10, w: 50, h: 65,
+      align: "topRight", anims: anims, name: "arm",
+      draw: (x, y, w, h, state) => {
+        handleAnimation(state);
+        image(assetStage1.arm, x, y, w, h);
+      }
+    });
+    stage1.elements.addChild(arm);
+  }
+}
 
+function zPressAnimStage1(arm, fly, pod, bagCont) {
+  if (state.pressed) return;
+  arm.state.playing = arm.state.anims.push; /*
+  if (pod.state.emptyNum >= pod.state.total - 1 
+      && pod.state.name.slice(5, 8) === "ept") {
+    pod.setState({
+      name: pod.state.name.slice(0, 5) + "pt",
+    });
+    return;
+  } else {
+    fly.state.anims.show.addCallback((state) => {
+      bagCont.findChildByName("bean-"+pod.state.emptyNum).show();
+      state.obj.hide();
+    });
+    fly.state.playing = fly.state.anims.show;
+    let next = pod.state.emptyNum + 1;
+    pod.setState({
+      emptyNum : next,
+      name: pod.state.name.slice(0, 5) + next,
+    });
+  }*/
+}
+
+function zReleaseAnimStage1(arm, fly, pod, bagCont) {
+  if (!state.pressed) return;
+  arm.state.playing = arm.state.anims.pull;
+}
+
+/**
+ * function to handle the process state
+ * much like a macro rather than a function
+ * @param {*} state 
+ */
+function handleAnimation(state) {
+  if (state.playing) {
+    if (state.playing.update() === -1) { // end animation condition
+      state.playing = null;
+    } else {
+      if (state.playing.move) state.playing.move(state.playing.state);
+    }
+  }
 }
 
 /**
@@ -463,7 +537,7 @@ class Note {
  }
  */
 class Animation {
-  constructor(props) {
+  constructor(props, callback) {
     this.state = {
       len   : props.len,
       life  : props.len,
@@ -471,13 +545,15 @@ class Animation {
       obj   : props.obj,
       loop  : props.loop,
     }
-    this.move = props.move
+    this.move = props.move;
+    this.callback = callback;
   }
 
   update(dt) {
     this.state.life --;
     let index = (this.state.len - this.state.life) % bpm * this.state.rate / bpm;
     if (this.state.life <= 0 && !this.state.loop) {
+      if (this.callback) this.callback(this.state);
       return -1;
     }
     return ~~index;
@@ -485,6 +561,10 @@ class Animation {
 
   draw() {
     this.state.obj.render();
+  }
+
+  addCallback(f) {
+    this.callback = f;
   }
 }
 
@@ -494,7 +574,6 @@ function keyTyped() {
   if (key === " ") {
     saveCanvas("thumbnail.png");
   } else if (key === "z") {
-    console.log("z pressed");
     // z event
     hitNote(0);
   } else if (key === "x") {
@@ -511,7 +590,9 @@ function keyTyped() {
 function keyPressed() {
   if (state.pressed) return;
   if (keyCode === 90) {
+    console.log("z pressed");
     state.zPress = true;
+    state.currentStage.event.zPress(state.currentStage.elements);
   } else if (keyCode === 88) {
     state.xPress = true;
   }
@@ -521,7 +602,9 @@ function keyPressed() {
 function keyReleased() {
   if (!state.pressed) return;
   if (state.zPress) {
+    console.log("z released");
     state.zPress = false;
+    state.currentStage.event.zRelease(state.currentStage.elements);
   } else if (state.xPress) {
     state.xPress = false;
   }
