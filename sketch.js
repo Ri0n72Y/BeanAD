@@ -14,6 +14,7 @@ function preload() {
     bg      : null,
     bag     : loadImage("assets/bag.png"),
     bean    : loadImage("assets/bean.png"),
+    flybean : null,
     table   : loadImage("assets/table.png"),
     chara   : null,
     charaG  : null,
@@ -107,8 +108,26 @@ function initStages() {
       stage1.elements.render();
     },
     event: {
-      zPress: (e)=> zPressAnimStage1(e.findChildByName("arm")),
-      zRelease: (e)=> zReleaseAnimStage1(e.findChildByName("arm")),
+      zPress: (e)=> zPressAnimStage1(
+        e.findChildByName("arm"), 
+        e.findChildByName("flybean"),
+        e.findChildByName("container_pod").findChildByName("pod"),
+        e.findChildByName("container_bowl")
+      ),
+      zRelease: (e)=> zReleaseAnimStage1(
+        e.findChildByName("arm"), 
+        e.findChildByName("flybean"),
+        e.findChildByName("container_pod").findChildByName("pod"),
+        e.findChildByName("container_bowl")
+      ),
+      xPress: (e)=> xPressAnimStage1(
+        e.findChildByName("container_pod").findChildByName("pod"),
+        e.findChildByName("container_bowl")
+      ),
+      xRelease: (e)=> xReleaseAnimStage1(
+        e.findChildByName("container_pod"),
+        e.findChildByName("container_bowl")
+      ),
     }
   };
 
@@ -134,10 +153,28 @@ function initStages() {
   };
 
   { // container bowl & beans 
+    let bagIn = new Animation({
+      len  : 6,
+      loop : false,
+      move : (state) => {
+        let s = state.obj.state;
+        s.x += 16;
+      } 
+    });
+    let out = new Animation({
+      len  : 6,
+      loop : false,
+      move : (state) => {
+        let s = state.obj.state;
+        s.x -= 16;
+      } 
+    });
     let container = new CObject({
       name: "container_bowl",
       x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
-      draw: (x, y, w, h) => {
+      anims: {out: out, bag_in: bagIn},
+      draw: (x, y, w, h, state) => {
+        handleAnimation(state)
         testDraw(x, y, w, h);
       },
     });
@@ -152,7 +189,7 @@ function initStages() {
     container.addChild(bag);
     for (let i = 0; i < 4; i++) {
       let bean = new CObject({
-        name: "bean-"+i, align: "center",
+        name: "bean-"+(i+1), align: "center",
         x: 18 + i * 7, y: -35, w: 9, h: 12,
         draw: (x, y, w, h) => {
           testDraw(x, y, w, h);
@@ -160,7 +197,7 @@ function initStages() {
         } 
       });
       bean.setState({
-        isHidden: false,
+        isHidden: true,
       });
       container.addChild(bean)
     }
@@ -200,7 +237,7 @@ function initStages() {
         loop : false,
         move : (state) => {
           let s = state.obj.state;
-          s.rotation += 0.06;
+          s.rotation += 0.055;
         } 
       });
       let anims = {
@@ -210,62 +247,68 @@ function initStages() {
       }
 
       let pod = (k, x, y) => {
-        let name = "pod"+k+"e0";
+        let texture = "pod"+k+"e0";
         let p = new CObject({
-          x: x, y: y, w: vw(45), h: vh(60), rotation: k === 4 ? -0.6 : -0.3,
-          anims: anims, align: "topRight", name: name,
-          draw: (x, y, w, h, state) => {
+          x: x, y: y, w: 45, h: 60, rotation: k === 4 ? -0.6 : -0.3,
+          anims: anims, align: "topRight", name: "pod", texture: texture,
+          draw: (x, y, w, h, s) => {
             testDraw(x, y, w, h)
-            handleAnimation(state);
-            image(assetStage1[state.name], x, y, w, h);
+            handleAnimation(s);
+            image(assetStage1[s.texture], x, y, w, h);
           },
         })
         p.setState({ total: k, emptyNum: 0 });
         return p;
       };
       stage1.pod = pod;
-    }
-    let test = stage1.pod(4, -94, -8);
+    } // end pod
+    let test = stage1.pod(2, -94, -8);
     test.state.playing = test.state.anims.pod_in;
     container.addChild(test);
-
-    let Bean =  (x, y) => new CObject({
-      x: x, y: y, align: "center", 
-      draw: () => {
-        image(assetStage1.bean, 0, 0, 200, 200)
-      },
-    });
-    stage1.Bean = Bean;
 
     stage1.elements.addChild(container)
   }// end container pods
 
-  // container beans
-  {
-    let container = new CObject({
-      name: "container_flybeans", align: "center",
-      x: 50, y: 50, w: 60, h: 50,
-      draw: testDraw
+  {// container beans
+    let show = new Animation({
+      len: 5,
+      loop : false,
+      move : (state) => {
+        state.obj.setState({
+          isHidden: false,
+        })
+      }
     });
-    //stage1.elements.addChild(container);
-  }
-  {
+    let bean =  new CObject({
+      x: 50, y: 50, w: 12, h: 16, 
+      align: "center", name : "flybean", anims : {show: show},
+      draw: (x, y, w, h, s) => {
+        testDraw(x, y, w, h);
+        handleAnimation(s);
+        image(assetStage1.bean, x, y, w, h)
+      },
+    });
+    bean.hide()
+    stage1.elements.addChild(bean);
+  } // end container beans
+
+  { // arm
     let push = new Animation({
-      len  : 6,
+      len  : 3,
       loop : false,
       move : (state) => {
         let s = state.obj.state;
-        s.x -= 2;
-        s.y += 2;
+        s.x -= 5;
+        s.y += 5;
       } 
     });
     let pull = new Animation({
-      len  : 6,
+      len  : 3,
       loop : false,
       move : (state) => {
         let s = state.obj.state;
-        s.x += 2;
-        s.y -= 2;
+        s.x += 5;
+        s.y -= 5;
       } 
     });
     let anims = {
@@ -281,35 +324,64 @@ function initStages() {
       }
     });
     stage1.elements.addChild(arm);
-  }
+  } // end arm
 }
 
 function zPressAnimStage1(arm, fly, pod, bagCont) {
-  if (state.pressed) return;
-  arm.state.playing = arm.state.anims.push; /*
-  if (pod.state.emptyNum >= pod.state.total - 1 
-      && pod.state.name.slice(5, 8) === "ept") {
-    pod.setState({
-      name: pod.state.name.slice(0, 5) + "pt",
-    });
+  arm.state.playing = arm.state.anims.push; 
+  if (pod.state.texture.slice(4, 7) === "ept"){
     return;
-  } else {
-    fly.state.anims.show.addCallback((state) => {
-      bagCont.findChildByName("bean-"+pod.state.emptyNum).show();
-      state.obj.hide();
-    });
-    fly.state.playing = fly.state.anims.show;
-    let next = pod.state.emptyNum + 1;
+  }
+  fly.show();
+  fly.state.anims.show.addCallback((state) => {
+    bagCont.findChildByName("bean-"+pod.state.emptyNum).show();
+    state.obj.hide();
+  });
+  fly.state.playing = fly.state.anims.show;
+  let next = pod.state.emptyNum + 1;
+  if (pod.state.emptyNum >= pod.state.total - 1 
+      && pod.state.texture.slice(5, 8) !== "ept") {
     pod.setState({
       emptyNum : next,
-      name: pod.state.name.slice(0, 5) + next,
+      texture: pod.state.texture.slice(0, 5) + "pt",
     });
-  }*/
+  } else {
+    pod.setState({
+      emptyNum : next,
+      texture: pod.state.texture.slice(0, 5) + next,
+    });
+  }
+}
+function zReleaseAnimStage1(arm, fly, pod, bagCont) {
+  arm.state.playing = arm.state.anims.pull;
+  if (pod.state.texture.slice(4, 7) !== "ept"){
+    pod.state.playing = pod.state.anims.pod_round;
+  }
 }
 
-function zReleaseAnimStage1(arm, fly, pod, bagCont) {
-  if (!state.pressed) return;
-  arm.state.playing = arm.state.anims.pull;
+function xPressAnimStage1(pod, bagCont) {
+  if (pod.state.texture.slice(4, 7) !== "ept") // if the pod is not empty
+    return;
+  pod.state.anims.pod_out.addCallback((state) => { // remove current pod after animation
+    state.obj.remove();
+  })
+  pod.state.playing = pod.state.anims.pod_out; 
+  bagCont.state.playing = bagCont.state.anims.out;
+}
+function xReleaseAnimStage1(podCont, bagCont) {
+  if (podCont.hasChildren())  {
+    return;
+  }
+  // have a new pod by notes
+  let pod = stage1.pod(stage1.seq[stage1.index], -94, -8);
+  pod.state.playing = pod.state.anims.pod_in;
+  podCont.addChild(pod);
+  // move bag back, hide all beans
+  for (let i = 0; i < 4; i++) {
+    let bean = bagCont.findChildByName("bean-"+(i+1));
+    bean.hide();
+  }
+  bagCont.state.playing = bagCont.state.anims.bag_in;
 }
 
 /**
@@ -320,6 +392,7 @@ function zReleaseAnimStage1(arm, fly, pod, bagCont) {
 function handleAnimation(state) {
   if (state.playing) {
     if (state.playing.update() === -1) { // end animation condition
+      state.playing.state.life = state.playing.state.len;
       state.playing = null;
     } else {
       if (state.playing.move) state.playing.move(state.playing.state);
@@ -339,6 +412,10 @@ function draw() {
   // add your draw code here
   background("black");
   state.currentStage.show();
+
+  if ((state.xPress) && !keyIsPressed) {
+    state.currentStage.event.xRelease();
+  }
 }
 
 /**
@@ -382,6 +459,8 @@ class CObject {
       isHidden: false,
       frames: props.frames,
       anims : props.anims ? props.anims : {},
+
+      texture: props.texture,
       playing : null,
     }
     if (props.anims) {
@@ -442,13 +521,27 @@ class CObject {
     return;
   }
 
+  hasChildren(child) {
+    if (!child) return this.children.length > 0;
+    return this.children.includes(child);
+  }
+
   addChild(child) {
     if (!(child instanceof CObject)) {
       return;
     }
     if (!this.children.includes(child)) {
+      child.parent = this;
       this.children.push(child);
     }
+  }
+
+  remove() {
+    this.parent.children.splice(this.parent.children.indexOf(this),1);
+  }
+
+  removeChild(child) {
+    this.children.splice(this.children.indexOf(child),1);
   }
 
   getOffset(alige) {
@@ -577,7 +670,6 @@ function keyTyped() {
     // z event
     hitNote(0);
   } else if (key === "x") {
-    console.log("x pressed");
     // x event
     hitNote(1);
   } else if (key === "/") {
@@ -588,25 +680,25 @@ function keyTyped() {
 }
 
 function keyPressed() {
-  if (state.pressed) return;
+  if (state.pressed || state.zPress || state.xPress) return;
   if (keyCode === 90) {
-    console.log("z pressed");
     state.zPress = true;
     state.currentStage.event.zPress(state.currentStage.elements);
   } else if (keyCode === 88) {
     state.xPress = true;
+    state.currentStage.event.xPress(state.currentStage.elements);
   }
   state.pressed = true;
 }
 
 function keyReleased() {
   if (!state.pressed) return;
-  if (state.zPress) {
-    console.log("z released");
+  if (state.zPress && state.pressed && !state.xPress) {
     state.zPress = false;
     state.currentStage.event.zRelease(state.currentStage.elements);
-  } else if (state.xPress) {
+  } else if (state.xPress && state.pressed && !state.zPress) {
     state.xPress = false;
+    state.currentStage.event.xRelease(state.currentStage.elements);
   }
   state.pressed = false;
 }
