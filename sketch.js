@@ -92,12 +92,10 @@ function initStages() {
   stage1 = {
     asset: assetStage1,
     elements: new CObject({
-      name: "scene1", x:0, y:0,
+      name: "scene1", x:0, y:0, align: "topLeft",
     }),
     index: 0,
-    Bean: (x, y) => new CObject({
-      x: x, y: y, align: "center", draw: () => image(assetStage1.bean, 0, 0, 200, 200),
-    }),
+    Bean: null,
     pod: null,
     seq: [2,2,4,0, 2,2,4,0, 2,4,2,2,4,2,2,2,4,0],
     notes: {
@@ -122,9 +120,11 @@ function initStages() {
   let testDraw = (w, h) => {
     push()
     noFill()
-    stroke(0);
+    stroke("black");
     strokeWeight(1);
     rect(0,0,w,h);
+    line(0, 0, w, h);
+    line(w, 0, 0, h);
     pop()
   };
 
@@ -132,26 +132,29 @@ function initStages() {
     let container = new CObject({
       name: "container_bowl",
       x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
-      draw: testDraw,
+      draw: (w, h) => {
+        testDraw(w, h);
+      },
     });
     container.addChild(new CObject({
       name: "bag",
-      x: 0, y: 0, w: 50, h: 65, align: "bottomLeft", 
+      x: 2, y: 48, w: 50, h: 65, align: "bottomLeft", 
       draw: (w, h) => {
-        image(assetStage1.bag, vw(5), vh(48), w, h);
+        testDraw(w, h);
+        image(assetStage1.bag, 0, 0, w, h);
       }
     }));
     for (let i = 0; i < 4; i++) {
       let bean = new CObject({
         name: "bean-"+i, align: "center",
-        x: 18 + i * 8, y: 16, w: 9, h: 12,
+        x: 16 + i * 7, y: 16, w: 9, h: 12,
         draw: (w, h) => {
           testDraw(w, h);
           image(assetStage1.bean, 0, 0, w, h);
         } 
       });
       bean.setState({
-        isHidden: true,
+        isHidden: false,
       });
       container.addChild(bean)
     }
@@ -168,29 +171,84 @@ function initStages() {
       }
     });
 
-    let podIn = new Animation({});
-    let podOut = new Animation({});
-    let anims = {
-      pod_in: podIn,
-      pod_out: podOut,
+    { // pod
+      let podIn = new Animation({
+        len  : 8,
+        loop : false,
+        move : (state) => {
+          let s = state.obj.state;
+          s.x += 12;
+        } 
+      });
+      let podOut = new Animation({
+        len  : 8,
+        loop : false,
+        move : (state) => {
+          let s = state.obj.state;
+          s.x += 12;
+          s.y += 12;
+        } 
+      });
+      let podRound = new Animation({
+        len  : 120,
+        loop : false,
+        move : (state) => {
+          let s = state.obj.state;
+          //s.rotation += 0.01;
+        } 
+      });
+      let anims = {
+        pod_in: podIn,
+        pod_out: podOut,
+        pod_round: podRound,
+      }
+
+      let pod = (k, x, y) => new CObject({
+        x: x, y: y, w: vw(45), h: vh(60), //rotation: -0.2,
+        anims: anims, align: "center",
+        draw: (w, h, state) => {
+          testDraw(w, h)
+          let [x, y] = [vw(state.x), vh(state.y)];
+          if (state.playing) {
+            if (state.playing.update() === -1) {
+              state.playing = null;
+              image(assetStage1["pod" + k], x, y, w, h);
+              return;
+            }
+            if (state.playing.move) state.playing.move(state.playing.state);
+            image(assetStage1["pod" + k], x, y, w, h);
+          } else {
+            image(assetStage1["pod" + k], x, y, w, h);
+          }
+        },
+      });
+      stage1.pod = pod;
     }
-    let pod = (k, x, y) => new CObject({
-      x: x, y: y, anims: anims, align: "center",
-      draw: (w, h, state) => {
-        image(assetStage1["pod" + k], 0, 0, w, h);
+    //let test = stage1.pod(4, -56, 34);
+    let test = stage1.pod(4, 0, 0);
+    //test.state.playing = test.state.anims.pod_round;
+    container.addChild(test);
+
+    let Bean =  (x, y) => new CObject({
+      x: x, y: y, align: "center", 
+      draw: () => {
+        image(assetStage1.bean, 0, 0, 200, 200)
       },
     });
-    stage1.pod = pod;
+    stage1.Bean = Bean;
 
     stage1.elements.addChild(container)
   }// end container pods
 
   // container beans
-  stage1.elements.addChild(new CObject({
-    name: "container_flybeans",
-    x: 20, y: 20, w: 60, h: 50,
-    draw: testDraw
-  }));
+  {
+    let container = new CObject({
+      name: "container_flybeans", align: "center",
+      x: 50, y: 50, w: 60, h: 50,
+      draw: testDraw
+    });
+    //stage1.elements.addChild(container);
+  }
 
 }
 
@@ -251,6 +309,14 @@ class CObject {
       anims : props.anims ? props.anims : {},
       playing : null,
     }
+    if (props.anims) {
+      for (const key in props.anims) {
+        if (props.anims.hasOwnProperty(key)) {
+          const a = props.anims[key];
+          a.state.obj = this;
+        }
+      }
+    }
     this.parent = props.parent;
     this.children = [];
     if (props.draw) {
@@ -264,7 +330,8 @@ class CObject {
     }
     push();
     let [x, y] = this.getOffset(this.state.align);
-    translate(vw(this.state.x - x), vh(this.state.y - y));
+    let tX = this.state.x - x, tY = this.state.y - y;
+    translate(vw(tX), vh(tY));
     rotate(this.state.rotation);
     scale(this.state.scale);
     try {
@@ -414,10 +481,6 @@ class Animation {
       return -1;
     }
     return ~~index;
-  }
-
-  move(state) {
-
   }
 
   draw() {
