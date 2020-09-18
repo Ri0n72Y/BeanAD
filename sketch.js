@@ -117,14 +117,15 @@ function initStages() {
       background("lime");
     }
   }));
-  let testDraw = (w, h) => {
+
+  let testDraw = (x, y, w, h) => {
     push()
     noFill()
     stroke("black");
     strokeWeight(1);
-    rect(0,0,w,h);
-    line(0, 0, w, h);
-    line(w, 0, 0, h);
+    rect(x, y, w, h);
+    line(x, y, x+w, y+h);
+    line(x+w, y, x, y+h);
     pop()
   };
 
@@ -132,25 +133,26 @@ function initStages() {
     let container = new CObject({
       name: "container_bowl",
       x: 0, y: 100, w: 62, h: 50, align: "bottomLeft", 
-      draw: (w, h) => {
-        testDraw(w, h);
+      draw: (x, y, w, h) => {
+        testDraw(x, y, w, h);
       },
     });
-    container.addChild(new CObject({
+    let bag = new CObject({
       name: "bag",
-      x: 2, y: 48, w: 50, h: 65, align: "bottomLeft", 
-      draw: (w, h) => {
-        testDraw(w, h);
-        image(assetStage1.bag, 0, 0, w, h);
+      x: 4, y: -3, w: 50, h: 65, align: "bottomLeft", 
+      draw: (x, y, w, h) => {
+        testDraw(x, y, w, h);
+        image(assetStage1.bag, x, y, w, h);
       }
-    }));
+    });
+    container.addChild(bag);
     for (let i = 0; i < 4; i++) {
       let bean = new CObject({
         name: "bean-"+i, align: "center",
-        x: 16 + i * 7, y: 16, w: 9, h: 12,
-        draw: (w, h) => {
-          testDraw(w, h);
-          image(assetStage1.bean, 0, 0, w, h);
+        x: 18 + i * 7, y: -35, w: 9, h: 12,
+        draw: (x, y, w, h) => {
+          testDraw(x, y, w, h);
+          image(assetStage1.bean, x, y, w, h);
         } 
       });
       bean.setState({
@@ -165,36 +167,36 @@ function initStages() {
     let container = new CObject({
       name: "container_pod",align: "topRight",
       x: 100, y: 0, w: 62, h: 60,  
-      draw: (w, h) => {
-        testDraw(w, h);
-        image(assetStage1.table, 0, -vh(8), w, h + vh(24));
+      draw: (x, y, w, h) => {
+        testDraw(x, y, w, h);
+        image(assetStage1.table, x, y-vh(8), w, h + vh(24));
       }
     });
 
     { // pod
       let podIn = new Animation({
-        len  : 8,
+        len  : 6,
         loop : false,
         move : (state) => {
           let s = state.obj.state;
-          s.x += 12;
+          s.x += 16;
         } 
       });
       let podOut = new Animation({
-        len  : 8,
+        len  : 6,
         loop : false,
         move : (state) => {
           let s = state.obj.state;
-          s.x += 12;
-          s.y += 12;
+          s.x += 16;
+          s.y += 16;
         } 
       });
       let podRound = new Animation({
-        len  : 120,
+        len  : 6,
         loop : false,
         move : (state) => {
           let s = state.obj.state;
-          //s.rotation += 0.01;
+          s.rotation += state.name === "pod4" ? 0.01 : 0.02;
         } 
       });
       let anims = {
@@ -204,11 +206,10 @@ function initStages() {
       }
 
       let pod = (k, x, y) => new CObject({
-        x: x, y: y, w: vw(45), h: vh(60), //rotation: -0.2,
-        anims: anims, align: "center",
-        draw: (w, h, state) => {
-          testDraw(w, h)
-          let [x, y] = [vw(state.x), vh(state.y)];
+        x: x, y: y, w: vw(45), h: vh(60), rotation: k === 4 ? -0.6 : -0.4,
+        anims: anims, align: "topRight", name: "pod"+k,
+        draw: (x, y, w, h, state) => {
+          testDraw(x, y, w, h)
           if (state.playing) {
             if (state.playing.update() === -1) {
               state.playing = null;
@@ -224,8 +225,8 @@ function initStages() {
       });
       stage1.pod = pod;
     }
-    //let test = stage1.pod(4, -56, 34);
-    let test = stage1.pod(4, 0, 0);
+    //let test = stage1.pod(4, -92, -8);
+    let test = stage1.pod(4, -12, -8);
     //test.state.playing = test.state.anims.pod_round;
     container.addChild(test);
 
@@ -330,12 +331,11 @@ class CObject {
     }
     push();
     let [x, y] = this.getOffset(this.state.align);
-    let tX = this.state.x - x, tY = this.state.y - y;
-    translate(vw(tX), vh(tY));
+    translate(vw(this.state.x), vh(this.state.y));
     rotate(this.state.rotation);
     scale(this.state.scale);
     try {
-      this.draw(vw(this.state.w), vh(this.state.h), this.state);
+      this.draw(-vw(x), -vh(y), vw(this.state.w), vh(this.state.h), this.state);
       this.children.forEach(c => c.render());
     } catch (error) {
       console.log(error);
