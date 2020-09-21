@@ -14,7 +14,7 @@ function preload() {
     bg      : null,
     bag     : loadImage("assets/bag.png"),
     bean    : loadImage("assets/bean.png"),
-    flybean : null,
+    flybean : loadImage("assets/flybean.png"),
     table   : loadImage("assets/table.png"),
     chara   : null,
     charaG  : null,
@@ -98,7 +98,7 @@ function initStages() {
     index: 0,
     Bean: null,
     pod: null,
-    seq: [2,2,4,0, 2,2,4,0, 2,4,2,2,4,2,2,2,4,0],
+    seq: [2,2,4, 2,2,4, 2,4,2,2,4,2,2,2,4],
     notes: {
       "d": [0,0,1],
       "q": [0,0,0,0,1],
@@ -280,12 +280,12 @@ function initStages() {
       }
     });
     let bean =  new CObject({
-      x: 50, y: 50, w: 12, h: 16, 
+      x: 46, y: 48, w: 15, h: 20, 
       align: "center", name : "flybean", anims : {show: show},
       draw: (x, y, w, h, s) => {
         testDraw(x, y, w, h);
         handleAnimation(s);
-        image(assetStage1.bean, x, y, w, h)
+        image(assetStage1.flybean, x, y, w, h)
       },
     });
     bean.hide()
@@ -382,6 +382,9 @@ function xReleaseAnimStage1(podCont, bagCont) {
     bean.hide();
   }
   bagCont.state.playing = bagCont.state.anims.bag_in;
+
+  //advance bean sequence
+  stage1.index ++;
 }
 
 /**
@@ -413,8 +416,8 @@ function draw() {
   background("black");
   state.currentStage.show();
 
-  if ((state.xPress) && !keyIsPressed) {
-    state.currentStage.event.xRelease();
+  if (state.currentStage === stage1 && !stage1.elements.findChildByName("container_pod").findChildByName("pod")) {
+    state.currentStage.event.xRelease(stage1.elements);
   }
 }
 
