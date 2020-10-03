@@ -2,7 +2,8 @@ var assetStage1, assetStage2, assetStage3, final, se;
 var welcome, stage1, stage2, stage3, thanks, state;
 const SCALE_WIDTH = 4, SCALE_HEIGHT = 3; // set canvas radius to 4:3, could be change for different size
 const NOTE_LENGTH = 100; // in ms
-const bpm = 60, beat = 4; // in frame/s
+
+const bpm = 96, fr = 60, beat = 4; // in frame/s
 
 function preload() {
   se = {
@@ -70,7 +71,7 @@ function setup() {
 
   let [w, h] = getScaledCanvasSize();
   createCanvas(w, h);
-  frameRate(bpm);
+  frameRate(fr);
 
   let c = document.getElementsByTagName("body").item(0).style;
   c.setProperty("display", "flex");
@@ -327,6 +328,8 @@ function initStages() {
   } // end arm
 }
 
+
+{  // stage 1 event
 function zPressAnimStage1(arm, fly, pod, bagCont) {
   arm.state.playing = arm.state.anims.push; 
   if (pod.state.texture.slice(4, 7) === "ept"){
@@ -386,6 +389,7 @@ function xReleaseAnimStage1(podCont, bagCont) {
   //advance bean sequence
   stage1.index ++;
 }
+}  // end stage 1 event
 
 /**
  * function to handle the process state
@@ -647,7 +651,7 @@ class Animation {
 
   update(dt) {
     this.state.life --;
-    let index = (this.state.len - this.state.life) % bpm * this.state.rate / bpm;
+    let index = (this.state.len - this.state.life) % fr * this.state.rate / fr;
     if (this.state.life <= 0 && !this.state.loop) {
       if (this.callback) this.callback(this.state);
       return -1;
