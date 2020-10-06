@@ -186,6 +186,7 @@ function initStages() {
   }));
 
   let testDraw = (x, y, w, h) => {
+    /*
     push()
     noFill()
     stroke("black");
@@ -194,6 +195,7 @@ function initStages() {
     line(x, y, x+w, y+h);
     line(x+w, y, x, y+h);
     pop()
+    */
   };
 
   { // container bowl & beans 
@@ -404,8 +406,8 @@ function initStages() {
     event: {
       zPress: ()=>{},
       xPress: ()=>{},
-      zRelease: ()=>{openWelcome()},
-      xRelease: ()=>{openWelcome()},
+      zRelease: ()=>{},
+      xRelease: ()=>{},
     }
   }
 }
