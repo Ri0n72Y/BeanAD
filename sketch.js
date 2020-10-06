@@ -139,7 +139,7 @@ function initStages() {
     show: () => {
       if (!state.isBGMPlaying) {
         state.isBGMPlaying = true;
-        setTimeout(final.theme.play(), 3000);
+        setTimeout(final.theme.play(), 5000);
       }
       /*
       stage1.notes.play();
