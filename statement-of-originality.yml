@@ -11,6 +11,9 @@ assets:
   - comment: sound effects
     url: "https://learningmusic.ableton.com/"
     licence: MIT
+  - comment: bgm
+    url: "https://musiclab.chromeexperiments.com/Song-Maker/song/5663014316408832"
+    licence: CREATE MYSELF
 
 # sign *your* name and uid here
 name: Rion, Ziyu Tao 

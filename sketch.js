@@ -1,18 +1,22 @@
 var assetStage1, assetStage2, assetStage3, final, se;
-var welcome, stage1, stage2, stage3, thanks, state;
+var openscreen, welcome, stage1, stage2, stage3, thanks, state;
 const SCALE_WIDTH = 4, SCALE_HEIGHT = 3; // set canvas radius to 4:3, could be change for different size
 const NOTE_LENGTH = 100; // in ms
 
-const bpm = 96, fr = 60, beat = 4; // in frame/s
+const bpm = 60, fr = 60, beat = 4, offset = 4; 
+const rate = (bpm * beat) / (60 * fr); // number of frames each beat
 
 function preload() {
   se = {
-    clap  : loadSound("assets/se/Clap.ogg"),
-    rim   : loadSound("assets/se/Rim.ogg"),
-    snare : loadSound("assets/se/Snare.ogg"),
+    clap   : loadSound("assets/se/Clap.ogg"),
+    rim    : loadSound("assets/se/Rim.ogg"),
+    snare  : loadSound("assets/se/Snare.ogg"),
+    closed : loadSound("assets/se/ClosedHat.ogg"),
+    kick   : loadSound("assets/se/Kick.ogg"),
+    open   : loadSound("assets/se/OpenHat.ogg"),
   }
   assetStage1 = {
-    bg      : null,
+    bg      : loadImage("assets/bg.png"),
     bag     : loadImage("assets/bag.png"),
     bean    : loadImage("assets/bean.png"),
     flybean : loadImage("assets/flybean.png"),
@@ -52,22 +56,38 @@ function preload() {
     ],
   }
   final = {
+    theme: loadSound("assets/se/bgm.mp3"),
+    open: loadImage("assets/open.png"),
     welcome: loadImage("assets/welcome.png"),
-    end : null,
+    z: loadImage("assets/z.png"),
+    x: loadImage("assets/x.png"),
+    end : loadImage("assets/end.png"),
   }
 }
 
 function setup() {
   // add your setup code here
+  background("white");
   state = {
     code: 0, // 0: welcome screen, 1: stage1, 2:stage2, 3:stage3, 4: final
     currentStage: null, // stage object
-    currentNote: null,
     pressed: false,
+    isBGMPlaying: false,
+    sampleNotes: {
+      "d": [0,0,1],
+      "q": [0,0,0,0,1],
+      "p": [-1],
+    },
+    createNote: (note, start, parent) => new Note({
+      len: NOTE_LENGTH,
+      start : start,
+      key   : note,
+      parent : parent,
+    }),
   },
 
   initStages();
-  state.currentStage = stage1;
+  state.currentStage = openscreen;
 
   let [w, h] = getScaledCanvasSize();
   createCanvas(w, h);
@@ -85,10 +105,26 @@ function windowResized() {
 
 function initStages() {
   // welcome screen
+  openscreen = {
+    show: () => {
+      let i = sin(frameCount / 10) * vw(10);
+      image(final.open, -i, -i, width+i, height+i);
+    },
+    event: {
+      any: ()=> {
+        openWelcome();
+      }
+    }
+  }
   welcome = {
     show: () => {
       image(final.welcome, 0, 0, width, height);
     },
+    event: {
+      any: ()=> {
+        startStage1();
+      }
+    }
   }
   // stage 1 
   stage1 = {
@@ -96,16 +132,23 @@ function initStages() {
     elements: new CObject({
       name: "scene1", x:0, y:0, align: "topLeft",
     }),
-    index: 0,
+    index: 1,
     Bean: null,
     pod: null,
-    seq: [2,2,4, 2,2,4, 2,4,2,2,4,2,2,2,4],
-    notes: {
-      "d": [0,0,1],
-      "q": [0,0,0,0,1],
-      "p": [-1],
-    },
+    seq: [2,2,4, 2,2,4, 2,4, 2,2,4, 2,2,2,4,4],
     show: () => {
+      if (!state.isBGMPlaying) {
+        state.isBGMPlaying = true;
+        setTimeout(final.theme.play(), 3000);
+      }
+      /*
+      stage1.notes.play();
+      */
+      if (stage1.index > stage1.seq.length) {
+        setTimeout(
+          startStage2(),
+          8000);
+      }
       stage1.elements.render();
     },
     event: {
@@ -137,8 +180,8 @@ function initStages() {
     name: "background",
     x: 0, y: 0,
     draw: () => {
-      //image(assetStage1.bg, 0, 0, width, height);
-      background("lime");
+      image(assetStage1.bg, 0, 0, width, height);
+      //background("lime");
     }
   }));
 
@@ -326,8 +369,67 @@ function initStages() {
     });
     stage1.elements.addChild(arm);
   } // end arm
+
+  /*
+  { // notes 
+    let notes = [];
+    stage1.notes = new Player({c: notes});
+    let start = offset;
+    for (const e of stage1.seq) {
+      switch (e) {
+        case 2:
+          for (const n of state.sampleNotes.d) {
+            notes.push(state.createNote(n, start, stage1.notes));
+            start += n === 0 ? 2 : beat;
+          }
+          break;
+        case 4:
+          for (const n of state.sampleNotes.q) {
+            notes.push(state.createNote(n, start, stage1.notes));
+            start += n === 0 ? 1 : beat;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  } // end notes
+  */
+
+  // stage thanks
+  thanks = {
+    show: () => {
+      image(final.end, 0, 0, width, height);
+    },
+    event: {
+      zPress: ()=>{},
+      xPress: ()=>{},
+      zRelease: ()=>{openWelcome()},
+      xRelease: ()=>{openWelcome()},
+    }
+  }
 }
 
+function openWelcome() {
+  final.theme.play();
+  state.isBGMPlaying = true;
+  state.currentStage = welcome;
+  state.notes = null;
+}
+function startStage1() {
+  final.theme.stop();
+  state.isBGMPlaying = false;
+  state.currentStage = stage1;
+  state.notes = stage1.notes;
+}
+function startStage2() {
+  endGame()
+}
+function endGame() {
+  stage1.index = 1;
+  state.currentStage = thanks;
+  state.notes = null;
+}
 
 {  // stage 1 event
 function zPressAnimStage1(arm, fly, pod, bagCont) {
@@ -417,7 +519,7 @@ function getScaledCanvasSize() {
 
 function draw() {
   // add your draw code here
-  background("black");
+  background("white");
   state.currentStage.show();
 
   if (state.currentStage === stage1 && !stage1.elements.findChildByName("container_pod").findChildByName("pod")) {
@@ -596,25 +698,37 @@ class CObject {
 class Note {
   constructor(props) {
     this.state = {
+      start : props.start, // start position
       length: props.len,
       life: props.len, // in ms
       parent: props.parent, // pointer to remove note
       key: props.key,
+      succ : null, // sound effect
+      fail : null, 
       hit: false,
+    }
+    switch (props.key) {
+      case 0:
+        this.state.succ = se.kick;
+        this.state.fail = se.closed;
+        break;
+      case 1:
+        this.state.succ = se.clap;
+        this.state.fail = se.rim;
     }
   }
   update(dt) {
     if (this.state.life <= 0) {
-      this.state.parent.currentNote = null;
+      this.state.parent.removeChild(this);
       let hit = this.state.hit;
       if (hit) {
-        se.clap.play();
+        this.state.succ.play();
       } else {
-        se.rim.play();
+        this.state.succ.play();
       }
       return hit;
     }
-    life -= dt;
+    this.state.life -= dt;
     return null;
   }
 
@@ -623,6 +737,34 @@ class Note {
       this.state.hit = true;
     }
     return this.state.hit;
+  }
+}
+
+class Player {
+  constructor(props) {
+    this.children = props.c ? props.c : [];
+    this.count = 0;
+    this.lastUpdate = -1;
+  }
+
+  play() { // call each frame
+    if (this.lastUpdate === -1) { // initialize
+      this.lastUpdate = frameCount;
+      console.log("player initialized succeed " + this.lastUpdate);
+    }
+    if (this.lastUpdate + rate < frameCount) { // add a beat per frame rate
+      this.count ++;
+      this.lastUpdate = frameCount;
+    }
+    this.children.forEach(e => {
+      if (this.count >= e.state.start) {
+        e.update(deltaTime);
+      }
+    })
+  }
+
+  removeChild(note) {
+    this.children.splice(this.children.indexOf(note), 1);
   }
 }
 
@@ -686,7 +828,18 @@ function keyTyped() {
   }
 }
 
+function mouseClicked() {
+  if (state.currentStage.event.any) {
+    state.currentStage.event.any();
+    return;
+  }
+}
+
 function keyPressed() {
+  if (state.currentStage.event.any) {
+    state.currentStage.event.any();
+    return;
+  }
   if (state.pressed || state.zPress || state.xPress) return;
   if (keyCode === 90) {
     state.zPress = true;
